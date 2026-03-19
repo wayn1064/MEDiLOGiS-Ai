@@ -11,3 +11,43 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  apiKey    String?  @unique // WAYN-Ai 발급 API Key (License)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+  approvals Approval[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  email        String   @unique
+  password     String
+  name         String
+  role         String   @default("USER")
+  customClaims Json? // 권한 기반 UI 처리를 위한 Custom Claims
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  approvals Approval[] @relation("UserApprovals")
+}
+
+model Approval {
+  id          String   @id @default(uuid())
+  tenantId    String
+  requesterId String
+  type        String // 발주, 연차 등
+  status      String   @default("PENDING")
+  data        Json? // 결재 상세 데이터 모음
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  requester User   @relation("UserApprovals", fields: [requesterId], references: [id])
+}
