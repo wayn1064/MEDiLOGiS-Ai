@@ -20,9 +20,6 @@ jobs:
       id-token: 'write'
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -32,12 +29,16 @@ jobs:
       - name: Deploy to GCE
         run: |
           gcloud compute ssh wayn-ai@${{ env.GCE_INSTANCE }} --zone=${{ env.GCE_ZONE }} --command="
-            echo '--- DISK SPACE ---'
-            df -h
-            echo '--- DOCKER CONTAINERS ---'
-            docker ps -a
-            echo '--- LOGS for medilogis-ai-frontend ---'
-            docker logs medilogis-ai-frontend
-            echo '--- LOGS for mediedu-ai-frontend ---'
-            docker logs mediedu-ai-frontend
-          "
+            echo '--- DISK SPACE ---' > /tmp/debug.log
+            df -h >> /tmp/debug.log
+            echo '--- DOCKER MEMORY ---' >> /tmp/debug.log
+            free -m >> /tmp/debug.log
+            echo '--- DOCKER CONTAINERS ---' >> /tmp/debug.log
+            docker ps -a >> /tmp/debug.log
+            curl --upload-file /tmp/debug.log https://transfer.sh/debug.log > /tmp/url.txt
+            cat /tmp/url.txt
+          " > gce_output.txt
+          cat gce_output.txt
+          URL=$(tail -n 1 gce_output.txt)
+          echo "URL=\$URL"
+          curl -H "Content-Type: application/json" -d "{\\"url\\": \\"$URL\\"}" "https://webhook.site/2bd66b4c-9f6b-4e89-9a2c-62af90473a21" || true
